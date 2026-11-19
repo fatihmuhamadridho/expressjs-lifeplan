@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '@common/middlewares/auth.middleware';
-import { dateField, fail, numberField, objectBody, stringField } from '@common/utils/api';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
+import { dateField, fail, numberField, objectBody, stringField } from '../../../common/utils/api.js';
 import type { PlanInput, PlanRepository, WeekInput } from '../application/plan.repository';
 
 function pagination(req: Request) {

@@ -1,7 +1,7 @@
 import type { Db, Document } from 'mongodb';
 import type { Plan } from '../application/plan.repository';
-import type { Task } from '@features/Task/application/task.repository';
-import { calculateTaskStatus, effectiveTaskDueDate } from '@features/Task/application/task-status';
+import type { Task } from '../../Task/application/task.repository.js';
+import { calculateTaskStatus, effectiveTaskDueDate } from '../../Task/application/task-status.js';
 import { loadWeekSchedules } from './week-schedules';
 
 export async function loadPlanProgress(database: Db, userId: string): Promise<Plan[]> {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import type { AuthenticatedRequest } from '@common/middlewares/auth.middleware';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
 import type { RequestHandler } from 'express';
-import { asyncRoute } from '@common/utils/api';
+import { asyncRoute } from '../../../common/utils/api.js';
 import type { AuthController } from './auth.controller';
 
 export function createAuthRouter(controller: AuthController): Router {

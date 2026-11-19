@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '@common/middlewares/auth.middleware';
-import { fail, dateField, numberField, objectBody, stringField } from '@common/utils/api';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
+import { fail, dateField, numberField, objectBody, stringField } from '../../../common/utils/api.js';
 import type { TaskInput, TaskRepository } from '../application/task.repository';
 
 function parseTask(input: unknown, partial = false): Partial<TaskInput> {

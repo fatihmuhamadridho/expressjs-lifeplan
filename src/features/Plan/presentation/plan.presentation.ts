@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
-import type { AuthenticatedRequest } from '@common/middlewares/auth.middleware';
-import { asyncRoute } from '@common/utils/api';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
+import { asyncRoute } from '../../../common/utils/api.js';
 import type { PlanController } from './plan.controller';
 
 export function createPlanRouter(controller: PlanController, authorize: RequestHandler): Router {

@@ -1,8 +1,8 @@
 import type { Collection, Db, Document } from 'mongodb';
-import { ApiError } from '@common/utils/api';
+import { ApiError } from '../../../common/utils/api.js';
 import { TaskRepository, type Task, type TaskInput, type TaskList } from '../application/task.repository';
 import { calculateTaskStatus, effectiveTaskDueDate } from '../application/task-status';
-import { loadWeekSchedules } from '@features/Plan/infrastructure/week-schedules';
+import { loadWeekSchedules } from '../../Plan/infrastructure/week-schedules.js';
 
 type TaskDocument = Document & Omit<Task, 'id' | 'status' | 'effectiveDue'> & { _id: string; userId: string };
 

@@ -1,6 +1,6 @@
 import { Router, type RequestHandler } from 'express';
-import type { AuthenticatedRequest } from '@common/middlewares/auth.middleware';
-import { asyncRoute } from '@common/utils/api';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
+import { asyncRoute } from '../../../common/utils/api.js';
 import type { ReportController } from './report.controller';
 
 export function createReportRouter(controller: ReportController, authorize: RequestHandler): Router {

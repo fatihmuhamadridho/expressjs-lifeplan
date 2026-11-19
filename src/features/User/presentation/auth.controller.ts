@@ -5,8 +5,8 @@ import {
   createAccessToken,
   ACCESS_TOKEN_TTL_SECONDS,
   type AuthenticatedRequest,
-} from '@common/middlewares/auth.middleware';
-import { fail, objectBody, stringField } from '@common/utils/api';
+} from '../../../common/middlewares/auth.middleware.js';
+import { fail, objectBody, stringField } from '../../../common/utils/api.js';
 import type { Account, AuthRepository } from '../application/auth.repository';
 
 const scrypt = promisify(scryptCallback);

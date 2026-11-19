@@ -1,7 +1,7 @@
 import type { Collection, Db, Document } from 'mongodb';
-import { ApiError } from '@common/utils/api';
+import { ApiError } from '../../../common/utils/api.js';
 import { loadPlanProgress } from './plan-progress';
-import type { TaskInput } from '@features/Task/application/task.repository';
+import type { TaskInput } from '../../Task/application/task.repository.js';
 import {
   PlanRepository,
   type Plan,
