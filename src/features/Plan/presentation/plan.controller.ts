@@ -39,6 +39,7 @@ function parseWeek(input: unknown, partial = false): Partial<WeekInput> {
   const body = objectBody(input);
   const result: Partial<WeekInput> = {};
   const has = (key: string) => !partial || body[key] !== undefined;
+  if (has('planId')) result.planId = stringField(body, 'planId', { required: true, max: 100 }) as string;
   if (has('week')) result.week = stringField(body, 'week', { required: true, max: 80 }) as string;
   for (const field of ['start', 'end'] as const) {
     if (has(field)) {
@@ -86,7 +87,9 @@ export class PlanController {
 
   async handleListWeeks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { page, limit } = pagination(req);
-    res.json(await this.planRepository.listWeeks(req.userId, page, limit));
+    if (req.query.planId !== undefined && (typeof req.query.planId !== 'string' || !req.query.planId.trim()))
+      fail(400, 'invalid_field', 'planId must be a non-empty string.');
+    res.json(await this.planRepository.listWeeks(req.userId, page, limit, req.query.planId as string | undefined));
   }
 
   async handleGetWeek(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -111,6 +114,16 @@ export class PlanController {
     const item = await this.planRepository.updateWeek(req.userId, id, updates);
     if (!item) fail(404, 'not_found', 'Week was not found.');
     res.json({ data: item });
+  }
+
+  async handleDuplicateWeek(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const item = await this.planRepository.duplicateWeek(
+      req.userId,
+      String(req.params.id),
+      parseWeek(req.body) as WeekInput
+    );
+    if (!item) fail(404, 'not_found', 'Week was not found.');
+    res.status(201).location(`/api/v1/weeks/${item.id}`).json({ data: item });
   }
 
   async handleDeleteWeek(req: AuthenticatedRequest, res: Response): Promise<void> {

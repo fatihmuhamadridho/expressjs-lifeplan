@@ -1,5 +1,7 @@
 import type { Collection, Db, Document } from 'mongodb';
 import { ApiError } from '@common/utils/api';
+import { loadPlanProgress } from './plan-progress';
+import type { TaskInput } from '@features/Task/application/task.repository';
 import {
   PlanRepository,
   type Plan,
@@ -13,7 +15,7 @@ type PlanDocument = Document & Omit<Plan, 'id'> & { _id: string; userId: string 
 type WeekDocument = Document & Omit<Week, 'id'> & { _id: string; userId: string };
 type GoalReference = Document & { _id: string; userId: string; title: string; archived?: boolean };
 type MilestoneReference = Document & { _id: string; userId: string; goalId: string; title: string };
-type TaskReference = Document & { userId: string; plan: string };
+type TaskReference = Document & TaskInput & { _id: string; userId: string };
 
 function mapPlan(item: PlanDocument): Plan {
   const { _id, userId: _owner, ...data } = item;
@@ -45,13 +47,19 @@ export class PlanRepositoryImpl extends PlanRepository {
   private readonly goals: Collection<GoalReference>;
   private readonly milestones: Collection<MilestoneReference>;
 
-  constructor(database: Db) {
+  constructor(private readonly database: Db) {
     super();
     this.plans = database.collection<PlanDocument>('plans');
     this.weeks = database.collection<WeekDocument>('weeks');
     this.tasks = database.collection<TaskReference>('tasks');
     this.goals = database.collection<GoalReference>('goals');
     this.milestones = database.collection<MilestoneReference>('milestones');
+  }
+
+  private async mapPlans(items: PlanDocument[]): Promise<Plan[]> {
+    if (!items.length) return [];
+    const progress = new Map((await loadPlanProgress(this.database, items[0].userId)).map((plan) => [plan.id, plan]));
+    return items.map((item) => progress.get(item._id) ?? mapPlan(item));
   }
 
   async listPlans(userId: string, page: number, limit: number): Promise<ResourceList<Plan>> {
@@ -64,12 +72,15 @@ export class PlanRepositoryImpl extends PlanRepository {
         .toArray(),
       this.plans.countDocuments({ userId }),
     ]);
-    return pageResult(items, total, page, limit, mapPlan);
+    return {
+      data: await this.mapPlans(items),
+      meta: { page, limit, totalItems: total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    };
   }
 
   async findPlan(userId: string, id: string): Promise<Plan | null> {
     const item = await this.plans.findOne({ userId, _id: id });
-    return item ? mapPlan(item) : null;
+    return item ? (await this.mapPlans([item]))[0] : null;
   }
 
   async createPlan(userId: string, input: PlanInput): Promise<Plan> {
@@ -91,7 +102,7 @@ export class PlanRepositoryImpl extends PlanRepository {
       createdAt: now,
       updatedAt: now,
     });
-    return mapPlan(item);
+    return (await this.mapPlans([item]))[0];
   }
 
   async updatePlan(userId: string, id: string, input: Partial<PlanInput>): Promise<Plan | null> {
@@ -141,28 +152,30 @@ export class PlanRepositoryImpl extends PlanRepository {
         { userId, plan: existing.name },
         { $set: { plan: next.name, updatedAt: new Date() } }
       );
-    return item ? mapPlan(item) : null;
+    return item ? (await this.mapPlans([item]))[0] : null;
   }
 
   async deletePlan(userId: string, id: string): Promise<'deleted' | 'not_found'> {
     const plan = await this.plans.findOne({ userId, _id: id });
     if (!plan) return 'not_found';
     const goal = await this.goals.findOne({ userId, title: plan.goal });
-    await this.tasks.updateMany({ userId, plan: plan.name }, { $set: { plan: '', updatedAt: new Date() } });
+    await this.tasks.updateMany({ userId, plan: plan.name }, { $set: { plan: '', week: null, updatedAt: new Date() } });
+    await this.weeks.deleteMany({ userId, planId: id });
     if (goal) await this.milestones.deleteMany({ userId, goalId: goal._id, title: plan.name });
     const result = await this.plans.deleteOne({ userId, _id: id, updatedAt: plan.updatedAt });
     return result.deletedCount > 0 ? 'deleted' : 'not_found';
   }
 
-  async listWeeks(userId: string, page: number, limit: number): Promise<ResourceList<Week>> {
+  async listWeeks(userId: string, page: number, limit: number, planId?: string): Promise<ResourceList<Week>> {
+    const query = { userId, ...(planId ? { planId } : {}) };
     const [items, total] = await Promise.all([
       this.weeks
-        .find({ userId })
+        .find(query)
         .sort({ start: 1, _id: 1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .toArray(),
-      this.weeks.countDocuments({ userId }),
+      this.weeks.countDocuments(query),
     ]);
     return pageResult(items, total, page, limit, mapWeek);
   }
@@ -173,6 +186,10 @@ export class PlanRepositoryImpl extends PlanRepository {
   }
 
   async createWeek(userId: string, input: WeekInput): Promise<Week> {
+    if (!(await this.plans.findOne({ userId, _id: input.planId })))
+      throw new ApiError(404, 'plan_not_found', 'The selected plan was not found.');
+    if (await this.weeks.findOne({ userId, planId: input.planId, week: input.week }))
+      throw new ApiError(409, 'week_exists', 'This week number already exists in this plan.');
     const now = new Date();
     const item: WeekDocument = { _id: crypto.randomUUID(), userId, ...input, createdAt: now, updatedAt: now };
     await this.weeks.insertOne(item);
@@ -182,26 +199,81 @@ export class PlanRepositoryImpl extends PlanRepository {
   async updateWeek(userId: string, id: string, input: Partial<WeekInput>): Promise<Week | null> {
     const existing = await this.weeks.findOne({ userId, _id: id });
     if (!existing) return null;
+    if (input.planId !== undefined && input.planId !== existing.planId)
+      throw new ApiError(400, 'invalid_plan', 'A week cannot be moved to a different plan.');
+    if (
+      input.week &&
+      input.week !== existing.week &&
+      (await this.weeks.findOne({ userId, planId: existing.planId, week: input.week }))
+    )
+      throw new ApiError(409, 'week_exists', 'This week number already exists in this plan.');
+    const plan = await this.plans.findOne({ userId, _id: existing.planId });
     const item = await this.weeks.findOneAndUpdate(
       { userId, _id: id, updatedAt: existing.updatedAt },
       { $set: { ...input, updatedAt: new Date() } },
       { returnDocument: 'after' }
     );
-    if (item && existing.week !== item.week)
+    if (item && plan && existing.week !== item.week)
       await this.tasks.updateMany(
-        { userId, week: existing.week },
+        { userId, plan: plan.name, week: existing.week },
         { $set: { week: item.week, updatedAt: new Date() } }
       );
     return item ? mapWeek(item) : null;
   }
 
+  async duplicateWeek(userId: string, id: string, input: WeekInput): Promise<Week | null> {
+    return this.database.client.withSession((session) =>
+      session.withTransaction(async () => {
+        const source = await this.weeks.findOne({ userId, _id: id }, { session });
+        if (!source) return null;
+        if (input.planId !== source.planId)
+          throw new ApiError(400, 'invalid_plan', 'A duplicate week must belong to the same plan.');
+        const plan = await this.plans.findOne({ userId, _id: source.planId }, { session });
+        if (!plan) throw new ApiError(404, 'plan_not_found', 'The selected plan was not found.');
+        if (await this.weeks.findOne({ userId, planId: source.planId, week: input.week }, { session }))
+          throw new ApiError(409, 'week_exists', 'This week number already exists in this plan.');
+        const tasks = await this.tasks
+          .find({ userId, plan: plan.name, week: { $in: [source.week, source._id] } }, { session })
+          .sort({ createdAt: 1, _id: 1 })
+          .toArray();
+        const now = new Date();
+        const copy: WeekDocument = { _id: crypto.randomUUID(), userId, ...input, createdAt: now, updatedAt: now };
+        const offset = Date.parse(input.start) - Date.parse(source.start);
+        await this.weeks.insertOne(copy, { session });
+        if (tasks.length)
+          await this.tasks.insertMany(
+            tasks.map((task) => ({
+              _id: crypto.randomUUID(),
+              userId,
+              title: task.title,
+              plan: plan.name,
+              week: copy.week,
+              priority: task.priority,
+              target: task.target,
+              successThreshold: task.successThreshold,
+              current: 0,
+              manualStatus: null,
+              reachedAt: null,
+              due: task.due ? new Date(Date.parse(task.due) + offset).toISOString().slice(0, 10) : null,
+              createdAt: now,
+              updatedAt: now,
+            })),
+            { session }
+          );
+        return mapWeek(copy);
+      })
+    );
+  }
+
   async deleteWeek(userId: string, id: string): Promise<boolean> {
     const week = await this.weeks.findOne({ userId, _id: id });
     if (!week) return false;
-    await this.tasks.updateMany(
-      { userId, week: { $in: [week._id, week.week] } },
-      { $set: { week: null, updatedAt: new Date() } }
-    );
+    const plan = await this.plans.findOne({ userId, _id: week.planId });
+    if (plan)
+      await this.tasks.updateMany(
+        { userId, plan: plan.name, week: { $in: [week._id, week.week] } },
+        { $set: { week: null, updatedAt: new Date() } }
+      );
     const result = await this.weeks.deleteOne({ userId, _id: id, updatedAt: week.updatedAt });
     return result.deletedCount > 0;
   }

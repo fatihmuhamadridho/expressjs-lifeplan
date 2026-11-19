@@ -1,5 +1,7 @@
 import type { Collection, Db, Document } from 'mongodb';
 import { ApiError } from '@common/utils/api';
+import { loadPlanProgress } from '@features/Plan/infrastructure/plan-progress';
+import { calculateGoalProgress } from '../application/goal-progress';
 import {
   GoalRepository,
   type Goal,
@@ -28,11 +30,17 @@ export class GoalRepositoryImpl extends GoalRepository {
   private readonly milestones: Collection<MilestoneDocument>;
   private readonly plans: Collection<Document & { userId: string; goal: string }>;
 
-  constructor(database: Db) {
+  constructor(private readonly database: Db) {
     super();
     this.goals = database.collection<GoalDocument>('goals');
     this.milestones = database.collection<MilestoneDocument>('milestones');
     this.plans = database.collection('plans');
+  }
+
+  private async mapGoals(items: GoalDocument[]): Promise<Goal[]> {
+    if (!items.length) return [];
+    const plans = await loadPlanProgress(this.database, items[0].userId);
+    return items.map((item) => ({ ...mapGoal(item), progress: calculateGoalProgress(item, plans) }));
   }
 
   async list(userId: string, page: number, limit: number, archived?: boolean): Promise<GoalList> {
@@ -47,14 +55,14 @@ export class GoalRepositoryImpl extends GoalRepository {
       this.goals.countDocuments(filter),
     ]);
     return {
-      data: items.map(mapGoal),
+      data: await this.mapGoals(items),
       meta: { page, limit, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / limit)) },
     };
   }
 
   async findById(userId: string, id: string): Promise<Goal | null> {
     const goal = await this.goals.findOne({ userId, _id: id });
-    return goal ? mapGoal(goal) : null;
+    return goal ? (await this.mapGoals([goal]))[0] : null;
   }
 
   async create(userId: string, input: GoalInput): Promise<Goal> {
@@ -68,7 +76,7 @@ export class GoalRepositoryImpl extends GoalRepository {
       updatedAt: now,
     };
     await this.goals.insertOne(goal);
-    return mapGoal(goal);
+    return (await this.mapGoals([goal]))[0];
   }
 
   async update(userId: string, id: string, input: GoalUpdateInput): Promise<Goal | null> {
@@ -84,7 +92,7 @@ export class GoalRepositoryImpl extends GoalRepository {
         { userId, goal: existing.title },
         { $set: { goal: input.title, updatedAt: new Date() } }
       );
-    return goal ? mapGoal(goal) : null;
+    return goal ? (await this.mapGoals([goal]))[0] : null;
   }
 
   async delete(userId: string, id: string): Promise<'deleted' | 'not_found' | 'has_plans' | 'not_archived'> {
@@ -99,9 +107,14 @@ export class GoalRepositoryImpl extends GoalRepository {
   }
 
   async listMilestones(userId: string, goalId: string): Promise<Milestone[] | null> {
-    if (!(await this.goals.findOne({ userId, _id: goalId }))) return null;
+    const goal = await this.goals.findOne({ userId, _id: goalId });
+    if (!goal) return null;
     const items = await this.milestones.find({ userId, goalId }).sort({ createdAt: 1 }).toArray();
-    return items.map(mapMilestone);
+    const plans = await loadPlanProgress(this.database, userId);
+    return items.map((item) => {
+      const plan = plans.find((plan) => plan.goal === goal.title && plan.name === item.title);
+      return { ...mapMilestone(item), progress: plan?.progress ?? item.progress };
+    });
   }
 
   async createMilestone(userId: string, goalId: string, input: MilestoneInput): Promise<Milestone | null> {

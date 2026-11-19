@@ -1,3 +1,5 @@
+export type TaskStatus = 'To Do' | 'In Progress' | 'Completed' | 'Failed';
+
 export type TaskInput = {
   title: string;
   plan: string;
@@ -7,10 +9,13 @@ export type TaskInput = {
   target: number;
   successThreshold: number;
   week?: string | null;
+  manualStatus?: TaskStatus | null;
 };
 
 export type Task = TaskInput & {
   id: string;
+  effectiveDue?: string | null;
+  status?: TaskStatus;
   reachedAt: string | null;
   createdAt: Date;
   updatedAt: Date;

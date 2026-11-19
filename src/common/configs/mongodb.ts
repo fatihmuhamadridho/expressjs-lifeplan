@@ -25,6 +25,12 @@ export async function ensureDatabaseIndexes(database: Db): Promise<void> {
       database.collection(name).createIndex({ userId: 1, createdAt: -1 })
     ),
     database.collection('visions').createIndex({ userId: 1 }, { unique: true }),
+    database
+      .collection('weeks')
+      .createIndex(
+        { userId: 1, planId: 1, week: 1 },
+        { unique: true, partialFilterExpression: { planId: { $type: 'string' } } }
+      ),
   ]);
 }
 

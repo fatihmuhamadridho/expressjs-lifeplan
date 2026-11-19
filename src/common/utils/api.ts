@@ -83,6 +83,17 @@ export function apiErrorHandler(error: unknown, _req: Request, res: Response, ne
     return;
   }
   if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+    if (
+      'keyPattern' in error &&
+      error.keyPattern &&
+      typeof error.keyPattern === 'object' &&
+      'planId' in error.keyPattern
+    ) {
+      res
+        .status(409)
+        .json({ error: { code: 'week_exists', message: 'This week number already exists in this plan.' } });
+      return;
+    }
     res.status(409).json({ error: { code: 'email_exists', message: 'An account with this email already exists.' } });
     return;
   }

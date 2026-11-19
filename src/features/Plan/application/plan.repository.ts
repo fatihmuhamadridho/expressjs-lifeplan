@@ -9,7 +9,7 @@ export type PlanInput = {
   status: 'In Progress' | 'Completed' | 'On Hold' | 'Not Started';
 };
 export type Plan = PlanInput & { id: string; createdAt: Date; updatedAt: Date };
-export type WeekInput = { week: string; start: string; end: string };
+export type WeekInput = { planId: string; week: string; start: string; end: string };
 export type Week = WeekInput & { id: string; createdAt: Date; updatedAt: Date };
 export type ResourceList<T> = {
   data: T[];
@@ -22,9 +22,10 @@ export abstract class PlanRepository {
   abstract createPlan(userId: string, input: PlanInput): Promise<Plan>;
   abstract updatePlan(userId: string, id: string, input: Partial<PlanInput>): Promise<Plan | null>;
   abstract deletePlan(userId: string, id: string): Promise<'deleted' | 'not_found'>;
-  abstract listWeeks(userId: string, page: number, limit: number): Promise<ResourceList<Week>>;
+  abstract listWeeks(userId: string, page: number, limit: number, planId?: string): Promise<ResourceList<Week>>;
   abstract findWeek(userId: string, id: string): Promise<Week | null>;
   abstract createWeek(userId: string, input: WeekInput): Promise<Week>;
+  abstract duplicateWeek(userId: string, id: string, input: WeekInput): Promise<Week | null>;
   abstract updateWeek(userId: string, id: string, input: Partial<WeekInput>): Promise<Week | null>;
   abstract deleteWeek(userId: string, id: string): Promise<boolean>;
 }

@@ -7,7 +7,7 @@ function parseTask(input: unknown, partial = false): Partial<TaskInput> {
   const body = objectBody(input);
   const result: Partial<TaskInput> = {};
   const has = (key: string) => !partial || body[key] !== undefined;
-  if (has('title')) result.title = stringField(body, 'title', { required: true, max: 160 }) as string;
+  if (has('title')) result.title = stringField(body, 'title', { required: true, max: 2000 }) as string;
   if (has('plan')) {
     if (typeof body.plan !== 'string' || body.plan.length > 160)
       fail(400, 'invalid_field', 'plan must be a string with at most 160 characters.');
@@ -24,6 +24,12 @@ function parseTask(input: unknown, partial = false): Partial<TaskInput> {
     dateField(result.due, 'due');
   }
   if (has('week')) result.week = stringField(body, 'week', { max: 80, nullable: true });
+  if (body.manualStatus !== undefined) {
+    const status = stringField(body, 'manualStatus', { max: 20, nullable: true });
+    if (status !== null && !['To Do', 'In Progress', 'Completed', 'Failed'].includes(status as string))
+      fail(400, 'invalid_field', 'manualStatus must be To Do, In Progress, Completed, Failed, or null.');
+    result.manualStatus = status as TaskInput['manualStatus'];
+  }
   for (const field of ['current', 'target'] as const)
     if (has(field)) result[field] = numberField(body, field, { required: true, min: 0, max: 1_000_000 }) as number;
   if (has('successThreshold'))

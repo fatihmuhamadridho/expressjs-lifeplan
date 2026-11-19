@@ -4,7 +4,16 @@ export type OverviewReport = {
   goals: { total: number; averageProgress: number };
 };
 
-export type WeeklyReport = { week: string; month: number; successRate: number | null; failedRate: number | null }[];
+export type WeeklyReport = {
+  week: string;
+  start: string;
+  end: string;
+  month: number;
+  successRate: number | null;
+  failedRate: number | null;
+  successCount: number;
+  failedCount: number;
+}[];
 
 export abstract class ReportRepository {
   abstract getOverview(userId: string): Promise<OverviewReport>;

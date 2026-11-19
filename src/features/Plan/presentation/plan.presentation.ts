@@ -34,6 +34,10 @@ export function createPlanRouter(controller: PlanController, authorize: RequestH
     '/weeks',
     asyncRoute((req, res) => controller.handleCreateWeek(req as AuthenticatedRequest, res))
   );
+  router.post(
+    '/weeks/:id/duplicate',
+    asyncRoute((req, res) => controller.handleDuplicateWeek(req as AuthenticatedRequest, res))
+  );
   router.get(
     '/weeks/:id',
     asyncRoute((req, res) => controller.handleGetWeek(req as AuthenticatedRequest, res))
