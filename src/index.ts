@@ -1,7 +1,7 @@
-import express, { Request, Response } from 'express';
+import 'dotenv/config';
+import express, { Request, Response, Router } from 'express';
 import type { Server } from 'node:http';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { closeMongoDB, connectMongoDB, ensureDatabaseIndexes } from '@common/configs/mongodb';
 import { createAuthMiddleware } from '@common/middlewares/auth.middleware';
 import { apiErrorHandler } from '@common/utils/api';
@@ -13,8 +13,6 @@ import { VisionController, VisionRepositoryImpl, createVisionRouter } from '@fea
 import { AuthController, AuthRepositoryImpl, createAuthRouter, createProfileRouter } from '@features/User';
 import { httpLogger } from '@common/utils/httpLogger';
 import { logger } from '@common/utils/logger';
-
-dotenv.config();
 
 const app = express();
 
@@ -28,7 +26,8 @@ app.get('/', (_req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 4000;
 
-async function startServer(): Promise<void> {
+async function createApiRouter(): Promise<Router> {
+  const router = Router();
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret || jwtSecret.length < 32) {
     throw new Error('JWT_SECRET must be configured with at least 32 characters');
@@ -41,18 +40,43 @@ async function startServer(): Promise<void> {
   const goalRepository = new GoalRepositoryImpl(database);
   const authController = new AuthController(new AuthRepositoryImpl(database), jwtSecret);
 
-  app.use('/api/v1', createAuthRouter(authController));
-  app.use('/api/v1', createProfileRouter(authController, authorize));
-  app.use('/api/v1', createTaskRouter(new TaskController(taskRepository), authorize));
-  app.use('/api/v1', createGoalRouter(new GoalController(goalRepository), authorize));
-  app.use('/api/v1', createPlanRouter(new PlanController(planRepository), authorize));
-  app.use('/api/v1', createReportRouter(new ReportController(new ReportRepositoryImpl(database)), authorize));
-  app.use('/api/v1', createVisionRouter(new VisionController(new VisionRepositoryImpl(database)), authorize));
-  app.use((_req: Request, res: Response) =>
-    res.status(404).json({ error: { code: 'not_found', message: 'Route was not found.' } })
-  );
-  app.use(apiErrorHandler);
+  router.use(createAuthRouter(authController));
+  router.use(createProfileRouter(authController, authorize));
+  router.use(createTaskRouter(new TaskController(taskRepository), authorize));
+  router.use(createGoalRouter(new GoalController(goalRepository), authorize));
+  router.use(createPlanRouter(new PlanController(planRepository), authorize));
+  router.use(createReportRouter(new ReportController(new ReportRepositoryImpl(database)), authorize));
+  router.use(createVisionRouter(new VisionController(new VisionRepositoryImpl(database)), authorize));
+  return router;
+}
 
+let apiRouterPromise: Promise<Router> | undefined;
+
+function getApiRouter(): Promise<Router> {
+  apiRouterPromise ??= createApiRouter().catch((error: unknown) => {
+    apiRouterPromise = undefined;
+    throw error;
+  });
+  return apiRouterPromise;
+}
+
+app.use('/api/v1', async (req, res, next) => {
+  try {
+    const router = await getApiRouter();
+    router(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+app.use((_req: Request, res: Response) =>
+  res.status(404).json({ error: { code: 'not_found', message: 'Route was not found.' } })
+);
+app.use(apiErrorHandler);
+
+export default app;
+
+async function startServer(): Promise<void> {
+  await getApiRouter();
   const server: Server = app.listen(PORT, () => {
     logger.info(`Server running on http://localhost:${PORT}`);
   });
@@ -76,11 +100,13 @@ async function startServer(): Promise<void> {
   process.once('SIGTERM', shutdown);
 }
 
-startServer().catch(async (error: unknown) => {
-  logger.error(
-    { message: error instanceof Error ? error.message : 'Unknown startup error' },
-    'Application startup failed'
-  );
-  await closeMongoDB();
-  process.exitCode = 1;
-});
+if (!process.env.VERCEL) {
+  void startServer().catch(async (error: unknown) => {
+    logger.error(
+      { message: error instanceof Error ? error.message : 'Unknown startup error' },
+      'Application startup failed'
+    );
+    await closeMongoDB();
+    process.exitCode = 1;
+  });
+}
