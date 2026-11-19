@@ -2,17 +2,17 @@ import 'dotenv/config';
 import express, { Request, Response, Router } from 'express';
 import type { Server } from 'node:http';
 import cors from 'cors';
-import { closeMongoDB, connectMongoDB, ensureDatabaseIndexes } from './common/configs/mongodb.js';
-import { createAuthMiddleware } from './common/middlewares/auth.middleware.js';
-import { apiErrorHandler } from './common/utils/api.js';
-import { GoalController, GoalRepositoryImpl, createGoalRouter } from './features/Goal/index.js';
-import { PlanController, PlanRepositoryImpl, createPlanRouter } from './features/Plan/index.js';
-import { ReportController, ReportRepositoryImpl, createReportRouter } from './features/Report/index.js';
-import { TaskController, TaskRepositoryImpl, createTaskRouter } from './features/Task/index.js';
-import { VisionController, VisionRepositoryImpl, createVisionRouter } from './features/Vision/index.js';
-import { AuthController, AuthRepositoryImpl, createAuthRouter, createProfileRouter } from './features/User/index.js';
-import { httpLogger } from './common/utils/httpLogger.js';
-import { logger } from './common/utils/logger.js';
+import { closeMongoDB, connectMongoDB, ensureDatabaseIndexes } from './common/configs/mongodb';
+import { createAuthMiddleware } from './common/middlewares/auth.middleware';
+import { apiErrorHandler } from './common/utils/api';
+import { GoalController, GoalRepositoryImpl, createGoalRouter } from './features/Goal/index';
+import { PlanController, PlanRepositoryImpl, createPlanRouter } from './features/Plan/index';
+import { ReportController, ReportRepositoryImpl, createReportRouter } from './features/Report/index';
+import { TaskController, TaskRepositoryImpl, createTaskRouter } from './features/Task/index';
+import { VisionController, VisionRepositoryImpl, createVisionRouter } from './features/Vision/index';
+import { AuthController, AuthRepositoryImpl, createAuthRouter, createProfileRouter } from './features/User/index';
+import { httpLogger } from './common/utils/httpLogger';
+import { logger } from './common/utils/logger';
 
 const app = express();
 

@@ -1,6 +1,6 @@
 import type { Collection, Db, Document } from 'mongodb';
-import { ApiError } from '../../../common/utils/api.js';
-import { loadPlanProgress } from '../../Plan/infrastructure/plan-progress.js';
+import { ApiError } from '../../../common/utils/api';
+import { loadPlanProgress } from '../../Plan/infrastructure/plan-progress';
 import { calculateGoalProgress } from '../application/goal-progress';
 import {
   GoalRepository,

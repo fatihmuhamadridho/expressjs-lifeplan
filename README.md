@@ -2,11 +2,11 @@
 
 ## Local development
 
-Install dependencies with `pnpm install`, copy `.env.example` to `.env`, configure MongoDB and a JWT secret of at least 32 characters, then run `pnpm dev`. Run `pnpm start` for the standalone server. The TypeScript runtime resolves the project's import aliases.
+Install dependencies with `pnpm install`, copy `.env.example` to `.env`, configure MongoDB and a JWT secret of at least 32 characters, then run `pnpm dev`. Run `pnpm build` followed by `pnpm start` for the standalone server. The build bundles internal TypeScript modules so source imports do not need file extensions.
 
 ## Deploy to Vercel
 
-Import the `expressjs-lifeplan` repository and select the **Express** framework preset. Set Root Directory to the repository root. Keep Build Command and Output Directory at the preset defaults; do not set the output directory to `dist` or use `pnpm start` as a build command. Vercel detects `src/index.ts` and its default Express app export, and handles all routes without custom rewrites.
+Import the `expressjs-lifeplan` repository with the root directory set to the repository root. The included Vercel configuration selects the Other framework and the build script produces a Node.js function using the Vercel Build Output API. Keep the build command at its default (`npm run build`) and leave the output directory unset. All paths are routed to the bundled Express app.
 
 Configure these environment variables for the deployment environment before redeploying:
 

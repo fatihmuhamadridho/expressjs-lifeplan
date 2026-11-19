@@ -1,6 +1,6 @@
 import type { Response } from 'express';
-import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
-import { fail } from '../../../common/utils/api.js';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware';
+import { fail } from '../../../common/utils/api';
 import type { ReportRepository } from '../application/report.repository';
 
 export class ReportController {

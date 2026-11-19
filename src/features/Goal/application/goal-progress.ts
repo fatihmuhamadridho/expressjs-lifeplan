@@ -1,5 +1,5 @@
 import type { Goal } from './goal.repository';
-import type { Plan } from '../../Plan/application/plan.repository.js';
+import type { Plan } from '../../Plan/application/plan.repository';
 
 export function calculateGoalProgress(goal: Pick<Goal, 'title' | 'progress'>, plans: Plan[]): number {
   const linkedPlans = plans.filter((plan) => plan.goal === goal.title);

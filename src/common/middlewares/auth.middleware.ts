@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { ApiError } from '../utils/api.js';
+import { ApiError } from '../utils/api';
 
 export type AuthenticatedRequest = Request & { userId: string };
 

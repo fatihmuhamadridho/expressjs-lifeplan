@@ -1,6 +1,6 @@
 import type { Response } from 'express';
-import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
-import { fail, numberField, objectBody, stringField } from '../../../common/utils/api.js';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware';
+import { fail, numberField, objectBody, stringField } from '../../../common/utils/api';
 import type {
   VisionInput,
   VisionRepository,

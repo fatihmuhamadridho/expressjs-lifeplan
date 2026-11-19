@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware.js';
-import { fail, numberField, objectBody, stringField } from '../../../common/utils/api.js';
+import type { AuthenticatedRequest } from '../../../common/middlewares/auth.middleware';
+import { fail, numberField, objectBody, stringField } from '../../../common/utils/api';
 import type { GoalInput, GoalRepository, GoalUpdateInput, MilestoneInput } from '../application/goal.repository';
 
 function pagination(req: Request) {

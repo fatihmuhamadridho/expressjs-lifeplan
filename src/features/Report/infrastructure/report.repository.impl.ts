@@ -1,10 +1,10 @@
 import type { Db, Document } from 'mongodb';
 import { ReportRepository, type OverviewReport, type WeeklyReport } from '../application/report.repository';
-import { calculateTaskStatus, effectiveTaskDueDate } from '../../Task/application/task-status.js';
-import type { TaskStatus } from '../../Task/application/task.repository.js';
-import { loadWeekSchedules } from '../../Plan/infrastructure/week-schedules.js';
-import { loadPlanProgress } from '../../Plan/infrastructure/plan-progress.js';
-import { calculateGoalProgress } from '../../Goal/application/goal-progress.js';
+import { calculateTaskStatus, effectiveTaskDueDate } from '../../Task/application/task-status';
+import type { TaskStatus } from '../../Task/application/task.repository';
+import { loadWeekSchedules } from '../../Plan/infrastructure/week-schedules';
+import { loadPlanProgress } from '../../Plan/infrastructure/plan-progress';
+import { calculateGoalProgress } from '../../Goal/application/goal-progress';
 
 type TaskData = Document & {
   userId: string;
